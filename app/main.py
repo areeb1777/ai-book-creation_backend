@@ -6,14 +6,14 @@ that answers questions about book content using vector similarity search.
 Designed for Vercel serverless deployment with Mangum adapter.
 """
 
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
-from dotenv import load_dotenv
-import os
 
-# Load environment variables (only in non-serverless environments if needed)
-if os.getenv("VERCEL") != "1":
+# Only load environment variables locally, not in Vercel
+if not os.getenv("VERCEL"):
+    from dotenv import load_dotenv
     load_dotenv()
 
 # Initialize FastAPI app with serverless-friendly settings
@@ -35,24 +35,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Dynamically import routes to avoid cold start issues if needed
-def import_routes():
-    from app.api.routes import health, query, query_selected
-    from app.core.security import limiter
-    from slowapi import _rate_limit_exceeded_handler
-    from slowapi.errors import RateLimitExceeded
+# Import routes and add them to the app
+from app.api.routes import health, query, query_selected
 
-    # Add rate limiter state
-    app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+# Add rate limiting
+from app.core.security import limiter
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
-    # Include routers
-    app.include_router(health.router, prefix="", tags=["Health"])
-    app.include_router(query.router, prefix="", tags=["Query"])
-    app.include_router(query_selected.router, prefix="", tags=["Query"])
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Call import_routes to set up routes
-import_routes()
+# Include routers
+app.include_router(health.router, tags=["Health"])
+app.include_router(query.router, tags=["Query"])
+app.include_router(query_selected.router, tags=["Query"])
 
 @app.get("/")
 async def root():
@@ -66,7 +63,7 @@ async def root():
     }
 
 # Create Mangum handler for Vercel serverless functions
-handler = Mangum(app, lifespan="on")
+handler = Mangum(app)
 
 # This allows the application to run locally with uvicorn
 if __name__ == "__main__":
