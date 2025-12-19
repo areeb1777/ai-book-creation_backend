@@ -35,10 +35,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Import routes and add them to the app
-from app.api.routes import health, query, query_selected
-
-# Add rate limiting
+# Import rate limiting first
 from app.core.security import limiter
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -46,10 +43,15 @@ from slowapi.errors import RateLimitExceeded
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Include routers
-app.include_router(health.router, tags=["Health"])
-app.include_router(query.router, tags=["Query"])
-app.include_router(query_selected.router, tags=["Query"])
+# Import the actual router objects from each route module
+from app.api.routes.health import router as health_router
+from app.api.routes.query import router as query_router
+from app.api.routes.query_selected import router as query_selected_router
+
+# Include routers - make sure each route file exports a router object
+app.include_router(health_router, tags=["Health"])
+app.include_router(query_router, tags=["Query"])
+app.include_router(query_selected_router, tags=["Query"])
 
 @app.get("/")
 async def root():

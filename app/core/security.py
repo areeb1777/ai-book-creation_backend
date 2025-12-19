@@ -35,7 +35,7 @@ def sanitize_query(text: str) -> str:
         - Excessive whitespace
     """
     # Remove potential SQL injection patterns
-    sanitized = re.sub(r"[';\"\\]", "", text)
+    sanitized = re.sub(r"[';\"\\\\]", "", text)
 
     # Remove XSS patterns
     sanitized = re.sub(r"<script.*?>.*?</script>", "", sanitized, flags=re.IGNORECASE | re.DOTALL)
